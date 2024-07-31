@@ -1,0 +1,12 @@
+whisk:
+  ingress:
+    type: NodePort # 设置 OpenWhisk 服务的入口类型是 NodePort，允许从集群外部访问 OpenWhisk
+    apiHostName: 172.16.10.131 # 设置 API Host 的地址，使用 node-0 的主机 IP 即可
+    apiHostPort: 31001 # API Host 的端口号
+
+nginx:
+  httpsNodePort: 31001 # NGINX 用于反向代理请求
+
+k8s:
+  persistence:
+    enabled: false # 禁用持久化存储
