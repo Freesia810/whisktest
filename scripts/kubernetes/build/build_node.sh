@@ -1,2 +1,2 @@
-sudo bash build_env.sh
-sudo bash install_kube.sh
+bash build_env.sh
+bash install_kube.sh
