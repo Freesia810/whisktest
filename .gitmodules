@@ -1,6 +1,6 @@
 [submodule "openwhisk"]
 	path = openwhisk
-	url = git@github.com:apache/openwhisk.git
+	url = https://github.com/apache/openwhisk.git
 [submodule "openwhisk-deploy-kube"]
 	path = openwhisk-deploy-kube
-	url = git@github.com:apache/openwhisk-deploy-kube.git
+	url = https://github.com/apache/openwhisk-deploy-kube.git
