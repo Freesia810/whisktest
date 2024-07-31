@@ -18,8 +18,8 @@ AMI = {
     "serverlessappimages/py_sentiment_analysis": "ami-0e5ee9edea9f47a96"
 }
 
-def start_ec2(ec2_name, app):
-    ec2_client = boto3.client("ec2", region_name='us-east-1')
+def start_ec2(ec2_name, app, region):
+    ec2_client = boto3.client("ec2", region_name=region)
     instance=ec2_client.run_instances(ImageId=AMI[app], MinCount=1, MaxCount=1, 
                                       InstanceType=ec2_name, KeyName="eurosys",
                                       SecurityGroupIds=["sg-041ccbbb7e6e1b089"],
