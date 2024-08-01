@@ -1,10 +1,12 @@
+import json
 import time
 import boto3
 import paramiko
 
 class EC2Client:
     def __init__(self):
-        pass
+        self.instances = {}
+
     def init(self, region, key_id, access_key):
         self.ec2_client = boto3.client("ec2", region_name=region, 
                                        aws_access_key_id=key_id, 
@@ -29,43 +31,46 @@ class EC2Client:
                                             ]
                                         },
                                     ])
-        return (instance["Instances"][0]["InstanceId"])
+        id = instance["Instances"][0]["InstanceId"]
+        current_instance = list(self.ec2_resource.instances.filter(InstanceIds=[id]))
+        ip_address = current_instance[0].public_ip_address
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        self.instances[id] = (ip_address, ssh)
+        return id
     
     def getInstancePublicAddress(self, instance_id):
         current_instance = list(self.ec2_resource.instances.filter(InstanceIds=[instance_id]))
         ip_address = current_instance[0].public_ip_address
         return ip_address
 
-
-def ssh_connect_with_retry_with_run(ssh, ip_address, retries):
-    if retries > 3:
-        return False
-    privkey = paramiko.RSAKey.from_private_key_file('/home/freesia/kubernetes.pem')
-    interval = 5
-    try:
-        retries += 1
-        print('SSH into the instance: {}'.format(ip_address))
-        ssh.connect(hostname=ip_address, timeout=7200, username='ubuntu', pkey=privkey)
+    def connectInstance(self, instance_id, pem_path, retries=3):
+        if retries < 0:
+            return False
+        interval = 5
+        ip, ssh = self.instances[instance_id]
+        try:
+            print('SSH into the instance: {}'.format(ip))
+            ssh.connect(hostname=ip, timeout=7200, username='ubuntu', pkey=paramiko.RSAKey.from_private_key_file(pem_path))
+            return True
+        except Exception as e:
+            retries = retries - 1
+            print(e)
+            time.sleep(interval)
+            print('Retrying SSH connection to {}'.format(ip))
+            return self.connectInstance(instance_id, pem_path, retries)
     
-    except Exception as e:
-        print(e)
-        time.sleep(interval)
-        print('Retrying SSH connection to {}'.format(ip_address))
-        return ssh_connect_with_retry_with_run(ssh, ip_address, retries)
+    def executeCommand(self, instance_id, cmd):
+        _, ssh = self.instances[instance_id]
+        _, stdout, _ = ssh.exec_command(cmd)
+        print(stdout.read().decode('utf-8'))
 
-    print("connected")
-    _, stdout, stderr = ssh.exec_command("pwd")
-    res, _ = stdout.read(), stderr.read()
-    print("test res: " + str(res))
 
 if __name__ == "__main__":
     ec2 = EC2Client()
-
-    ec2.init("ap-northeast-2", "", "")
-    instance_id = ec2.createInstance('ami-09d3dd0451050f4b5', 't3.2xlarge', 'node-2', 'kubernetes', 'sg-015f6d7b3480b80ee', 'kubernetes')
-    ip = ec2.getInstancePublicAddress(instance_id)
-    print(ip)
-
-    ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh_connect_with_retry_with_run(ssh, ip, 2)
+    with open("aws.json") as f:
+        config = json.load(f)
+        ec2.init("ap-northeast-2", config['key_id'], config['access_key'])
+        instance_id = ec2.createInstance('ami-09d3dd0451050f4b5', 't3.2xlarge', 'node-2', 'kubernetes', 'sg-015f6d7b3480b80ee', 'kubernetes')
+        ec2.connectInstance(instance_id, '/home/freesia/kubernetes.pem')
+        ec2.executeCommand(instance_id, config['command'])
