@@ -65,8 +65,7 @@ class EC2Client:
         _, stdout, _ = ssh.exec_command(cmd)
         print(stdout.read().decode('utf-8'))
 
-
-if __name__ == "__main__":
+def k8s_add_node():
     ec2 = EC2Client()
     with open("aws.json") as f:
         config = json.load(f)
@@ -74,3 +73,6 @@ if __name__ == "__main__":
         instance_id = ec2.createInstance('ami-09d3dd0451050f4b5', 't3.2xlarge', 'node-2', 'kubernetes', 'sg-015f6d7b3480b80ee', 'kubernetes')
         ec2.connectInstance(instance_id, '/home/freesia/kubernetes.pem')
         ec2.executeCommand(instance_id, config['command'])
+
+if __name__ == "__main__":
+    k8s_add_node()
